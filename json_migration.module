@@ -1,0 +1,126 @@
+<?php
+
+
+
+/**
+ * You must implement hook_migrate_api(), setting the API level to 2, for
+ * your migration classes to be recognized by the Migrate module.
+ */
+function json_migration_migrate_api() {
+
+
+  $api = array(
+    'api' => 2,
+    'groups' => array(
+        'json_migration' => array(
+          'title' => t('Json Import'),
+        ),
+
+      ),
+      'migrations' => array(
+
+    'json' => array(
+      'class_name' => 'JSONMigration',
+      'group_name' => 'json_migration',
+    ),
+  )
+
+  );
+  return $api;
+}
+
+//class ExampleItemJSON extends MigrateItemJSON {
+// Retrieve item(s) from JSON
+class GetItemJSON extends MigrateItemJSON {
+  protected $data = array();
+  /**
+   * Two problems with the default getItem() - it reads and parses the JSON on
+   * each call, which we don't want to do for multiple items in the file; and,
+   * we need to retrieve a given item from the file according to its 'id' element.
+   */
+  public function getItem($id) {
+    // We cache the parsed JSON at $this->data.
+    if (empty($this->data)) {
+      $data = $this->loadJSONUrl($this->itemUrl);
+      //if ID is nsted  is a nested id
+      $data = $data->books;
+      if ($data) {
+        // Let's index the array by the ID for easy retrieval.
+      //  dsm($data);
+        foreach ($data as $item) {
+      //  dsm($item);
+          $this->data[$item->id] = $item;
+        }
+      }
+      else {
+        // Error-handling here....
+      }
+    }
+    // Return the requested item
+      dsm($this->data);
+    if (isset($this->data[$id])) {
+      return $this->data[$id];
+    }
+    else {
+      return NULL;
+    }
+  }
+}
+
+//class ExampleListJSON extends MigrateListJSON {
+// Where to find the data
+class FlatListJSON extends MigrateListJSON {
+  /**
+   * The default implementation assumes the IDs are top-level array elements,
+   * but the array elements are the data items - we need to look inside them
+   * for the IDs.
+   */
+  protected function getIDsFromJSON(array $data) {
+    $ids = array();
+    foreach ($data as $item) {
+      $ids[] = $item['id'];
+    }
+    return $ids;
+  }
+}
+
+
+
+//class MultiListJSON extends MigrateListJSON {
+// Where to find the data
+class NestedListJSON extends MigrateListJSON {
+  /**
+   * Originally this class assumed that the results would be all that was in the JSON
+   * object. This class has been modified to look inside the JSON object and find the
+   * expected data within the ['results'] member.
+   */
+  protected function getIDsFromJSON(array $data) {
+    $ids = array();
+    foreach ($data['books'] as $item) {
+      $ids[] = $item['id'];
+    }
+
+    return $ids;
+  }
+
+  /**
+   * If this is the case then the count will be off as well and we will have to overriden as well.
+   */
+  public function computeCount() {
+    $count = 0;
+    if (empty($this->httpOptions)) {
+      $json = file_get_contents($this->listUrl);
+    }
+    else {
+      $response = drupal_http_request($this->listUrl, $this->httpOptions);
+      $json = $response->data;
+    }
+    if ($json) {
+      $data = drupal_json_decode($json);
+      if ($data) {
+        $count = count($data['books']);
+      }
+    }
+    return $count;
+  }
+}

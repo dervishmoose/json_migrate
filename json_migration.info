@@ -1,0 +1,13 @@
+name = "JSON MIGRATION"
+description = "Demo module to migrate content from JSON to Drupal 7"
+package = "Development"
+core = 7.x
+dependencies[] = migrate
+dependencies[] = field
+dependencies[] = file
+dependencies[] = image
+dependencies[] = number
+dependencies[] = text
+
+files[] = json_migration.module
+files[] = json.migration.php
